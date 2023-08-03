@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spark Memory Configurations</title>
+    <style>
+        /* Add some colorful styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        h1, h2 {
+            color: #007bff;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100px;
+            margin-right: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 80%;
+            margin: 20px 0;
+        }
+
+        table, th, td {
+            border: 1px solid #007bff;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spark Memory Configurations</h1>
+
+    <label>Cluster Memory (GB):</label>
+    <input type="text" id="clusterMemory" value="100">
+    <br>
+
+    <label>Cluster CPU Cores:</label>
+    <input type="text" id="clusterCores" value="32">
+    <br>
+
+    <label>Executor Memory (GB):</label>
+    <input type="text" id="executorMemory" value="9">
+    <br>
+
+    <label>Executor Cores:</label>
+    <input type="text" id="executorCores" value="5">
+    <br>
+
+    <label>Driver Memory (GB):</label>
+    <input type="text" id="driverMemory" value="4">
+    <br>
+
+    <label>Shuffle Memory Fraction:</label>
+    <input type="text" id="shuffleFraction" value="0.2">
+    <br>
+
+    <label>Memory Overhead Fraction:</label>
+    <input type="text" id="memoryOverheadFraction" value="0.10">
+    <br>
+
+    <label>Off-Heap Memory (GB):</label>
+    <input type="text" id="offHeapMemory" value="2">
+    <br>
+
+    <label>Desired Shuffle Partitions:</label>
+    <input type="text" id="desiredShufflePartitions" value="200">
+    <br>
+
+    <label>Number of Broadcast Variables:</label>
+    <input type="text" id="numBroadcastVariables" value="3">
+    <br>
+
+    <label>Memory Fraction:</label>
+    <input type="text" id="memoryFraction" value="0.6">
+    <br>
+
+    <label>Storage Fraction:</label>
+    <input type="text" id="storageFraction" value="0.5">
+    <br>
+
+    <label>Number of Partitions:</label>
+    <input type="text" id="numPartitions" value="200">
+    <br>
+
+    <label>YARN Memory Overhead (GB):</label>
+    <input type="text" id="yarnMemoryOverhead" value="2">
+    <br>
+
+    <label>Driver Memory Overhead (GB):</label>
+    <input type="text" id="driverMemoryOverhead" value="1">
+    <br>
+
+    <label>Broadcast Timeout (seconds):</label>
+    <input type="text" id="broadcastTimeout" value="300">
+    <br>
+    <br>
+
+    <button onclick="calculateConfig()">Calculate Configurations</button>
+
+    <h2>Results</h2>
+    <div id="results"></div>
+
+    <h2>Recommendations</h2>
+    <div id="recommendations"></div>
+
+    <script>
+        function calculateConfig() {
+            var clusterMemory = parseFloat(document.getElementById('clusterMemory').value);
+            var clusterCores = parseInt(document.getElementById('clusterCores').value);
+            var executorMemory = parseFloat(document.getElementById('executorMemory').value);
+            var executorCores = parseInt(document.getElementById('executorCores').value);
+            var driverMemory = parseFloat(document.getElementById('driverMemory').value);
+            var shuffleFraction = parseFloat(document.getElementById('shuffleFraction').value);
+            var memoryOverheadFraction = parseFloat(document.getElementById('memoryOverheadFraction').value);
+            var offHeapMemory = parseFloat(document.getElementById('offHeapMemory').value);
+            var desiredShufflePartitions = parseInt(document.getElementById('desiredShufflePartitions').value);
+            var numBroadcastVariables = parseInt(document.getElementById('numBroadcastVariables').value);
+            var memoryFraction = parseFloat(document.getElementById('memoryFraction').value);
+            var storageFraction = parseFloat(document.getElementById('storageFraction').value);
+            var numPartitions = parseInt(document.getElementById('numPartitions').value);
+            var yarnMemoryOverhead = parseFloat(document.getElementById('yarnMemoryOverhead').value);
+            var driverMemoryOverhead = parseFloat(document.getElementById('driverMemoryOverhead').value);
+            var broadcastTimeout = parseInt(document.getElementById('broadcastTimeout').value);
+
+            var memoryOverhead = (executorMemory * memoryOverheadFraction).toFixed(2);
+            var totalExecutorMemory = executorMemory + parseFloat(memoryOverhead) + offHeapMemory;
+            var executorCount = Math.floor(clusterMemory / totalExecutorMemory);
+            var totalCores = executorCount * executorCores;
+            var shuffleMemory = (totalExecutorMemory * shuffleFraction).toFixed(2);
+            var shufflePartitions = Math.max(Math.ceil(totalCores / executorCores), desiredShufflePartitions);
+            var nodeCount = Math.ceil(executorCount / (clusterCores / executorCores));
+            var memoryPerExecutor = memoryFraction * totalExecutorMemory;
+            var storagePerExecutor = storageFraction * memoryPerExecutor;
+            var totalStorage = numPartitions * storagePerExecutor;
+            var coresPerPartition = Math.ceil(totalCores / numPartitions);
+            var yarnMemory = yarnMemoryOverhead + totalExecutorMemory;
+            var driverMemoryWithOverhead = driverMemory + driverMemoryOverhead;
+
+            var results = `
+                <table>
+                    <tr><th>Parameter</th><th>Value</th></tr>
+                    <tr><td>Executor Memory (GB)</td><td>${executorMemory}</td></tr>
+                    <tr><td>Executor Cores</td><td>${executorCores}</td></tr>
+                    <tr><td>Total Executors</td><td>${executorCount}</td></tr>
+                    <tr><td>Total Cores</td><td>${totalCores}</td></tr>
+                    <tr><td>Driver Memory (GB)</td><td>${driverMemory}</td></tr>
+                    <tr><td>Memory Overhead (GB)</td><td>${memoryOverhead}</td></tr>
+                    <tr><td>Off-Heap Memory (GB)</td><td>${offHeapMemory}</td></tr>
+                    <tr><td>Total Executor Memory (GB)</td><td>${totalExecutorMemory}</td></tr>
+                    <tr><td>Shuffle Memory (GB)</td><td>${shuffleMemory}</td></tr>
+                    <tr><td>Desired Shuffle Partitions</td><td>${desiredShufflePartitions}</td></tr>
+                    <tr><td>Actual Shuffle Partitions</td><td>${shufflePartitions}</td></tr>
+                    <tr><td>Number of Nodes</td><td>${nodeCount}</td></tr>
+                    <tr><td>Number of Broadcast Variables</td><td>${numBroadcastVariables}</td></tr>
+                    <tr><td>Memory Fraction</td><td>${memoryFraction}</td></tr>
+                    <tr><td>Storage Fraction</td><td>${storageFraction}</td></tr>
+                    <tr><td>Number of Partitions</td><td>${numPartitions}</td></tr>
+                    <tr><td>Memory Per Executor (GB)</td><td>${memoryPerExecutor.toFixed(2)}</td></tr>
+                    <tr><td>Storage Per Executor (GB)</td><td>${storagePerExecutor.toFixed(2)}</td></tr>
+                    <tr><td>Total Storage (GB)</td><td>${totalStorage.toFixed(2)}</td></tr>
+                    <tr><td>Cores Per Partition</td><td>${coresPerPartition}</td></tr>
+                    <tr><td>YARN Memory Overhead (GB)</td><td>${yarnMemoryOverhead}</td></tr>
+                    <tr><td>Total YARN Memory (GB)</td><td>${yarnMemory.toFixed(2)}</td></tr>
+                    <tr><td>Driver Memory Overhead (GB)</td><td>${driverMemoryOverhead}</td></tr>
+                    <tr><td>Driver Memory with Overhead (GB)</td><td>${driverMemoryWithOverhead.toFixed(2)}</td></tr>
+                    <tr><td>Broadcast Timeout (seconds)</td><td>${broadcastTimeout}</td></tr>
+                </table>
+            `;
+
+            document.getElementById('results').innerHTML = results;
+
+            // Calculate and display additional recommendations based on the calculated configurations
+            var recommendations = calculateRecommendations();
+            document.getElementById('recommendations').innerHTML = recommendations;
+        }
+
+        function calculateRecommendations() {
+            // Additional calculations or recommendations can be added here
+            // For example:
+            var recommendations = `
+                <p>Based on the provided configurations, I recommend...</p>
+                <ul>
+                    <li>Adjust the shuffle fraction based on data skewness to optimize shuffle operations.</li>
+                    <li>Consider increasing the number of partitions for better parallelism if your workload involves a large number of tasks.</li>
+                    <li>Monitor the cluster during execution to fine-tune memory and core settings for optimal performance.</li>
+                </ul>
+            `;
+            return recommendations;
+        }
+    </script>
+
+<br>
+<p>Deciding the values for these input parameters depends on several factors, including the available resources in your Spark cluster, the nature of your data and workload, and the complexity of your Spark application.</p>
+<p>Here are some guidelines for deciding these parameters:</p>
+<ul>
+    <li><b>Cluster Memory and CPU Cores:</b> These values depend on the total resources available in your Spark cluster. It is essential to have a clear understanding of the cluster's memory and CPU capacity.</li>
+    <li><b>Executor Memory and Cores:</b> These parameters determine the memory and CPU resources allocated to each executor. The executor memory should be set to a value that provides enough heap space for the tasks to run efficiently.</li>
+    <li><b>Driver Memory:</b> The driver memory should be set based on the requirements of your Spark driver program. Make sure it has enough memory to handle the driver-side computations.</li>
+    <li><b>Shuffle Memory Fraction:</b> The shuffle memory fraction determines how much memory is reserved for shuffle operations during data shuffling. Setting it too low may lead to disk spills, while setting it too high may impact the available memory for task execution.</li>
+    <li><b>Memory Overhead Fraction:</b> The memory overhead fraction is used to allocate off-heap memory for internal data structures. It is important to set a reasonable value to avoid out-of-memory errors.</li>
+    <li><b>Off-Heap Memory:</b> Off-heap memory is used for caching and other off-heap data structures. It should be set based on the requirements of your application.</li>
+    <li><b>Desired Shuffle Partitions:</b> The desired number of shuffle partitions affects the parallelism of data shuffling. Setting an appropriate value can optimize the shuffle operations.</li>
+    <li><b>Number of Broadcast Variables:</b> The number of broadcast variables affects the memory usage during data broadcasting. Consider the size and number of broadcast variables used in your application.</li>
+    <li><b>Memory Fraction and Storage Fraction:</b> These parameters determine the memory allocation for storage and execution. Adjust them based on your data size and storage requirements.</li>
+    <li><b>Number of Partitions:</b> The number of partitions used in RDDs and DataFrames affects the parallelism of your tasks. Consider the size of your data and the computational resources available.</li>
+    <li><b>YARN Memory Overhead and Driver Memory Overhead:</b> These parameters are relevant if you are running Spark on YARN. They determine the additional memory allocated for YARN and the driver program, respectively.</li>
+    <li><b>Broadcast Timeout:</b> The broadcast timeout sets the maximum duration to wait for a broadcast variable to be ready. Set it to a value that allows the broadcast variables to be efficiently distributed.</li>
+</ul>
+<br>
+
+<p style="color: #007bff; font-size: 18px; font-weight: bold;">
+    Developer: Your Name
+    <br>
+    LinkedIn: <a href="https://www.linkedin.com/in/your-linkedin-profile/">Your LinkedIn Profile</a>
+</p>
+</body>
+</html>
